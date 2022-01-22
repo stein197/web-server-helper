@@ -22,64 +22,85 @@ where /q httpd || echo Apache HTTP Server is not installed or is not set in the 
 sc query Apache2.4 > nul || echo Installing Apache HTTP Server as a Windows service... && httpd -k install && echo Apache HTTP Server service has been installed successfully.
 sc query MariaDB > nul || echo MariaDB server is not installed as a Windows service. && exit /b 1
 
+set SRV_APACHE=Apache2.4
+set SRV_MARIADB=MariaDB
+set ERR=0
+
 if "%1" == "start" (
-	sc query MariaDB | findstr RUNNING > nul && (
-		echo MariaDB server is already running.
-	) || (
-		echo Starting MariaDB server...
-		sc start MariaDB && (
-			echo MariaDB server has been started.
-		) || (
-			echo Failed to start MariaDB server. Try to run as Administrator. && exit /b 1
-		)
-	)
-	sc query Apache2.4 | findstr RUNNING > nul && (
-		echo Apache HTTP Server is already running.
-	) || (
-		goto :startApache
-	)
+	call :startService %SRV_APACHE%
+	call :startService %SRV_MARIADB%
 ) else if "%1" == "restart" (
-	sc query Apache2.4 | findstr RUNNING > nul && (
-		echo Restarting Apache HTTP Server...
+	sc query %SRV_APACHE% | findstr RUNNING > nul && (
+		call :msg "BEFORE_ACTION" %SRV_APACHE% "Restarting"
 		httpd -k restart && (
-			echo Apache HTTP Server has been restarted.
+			call :msg "AFTER_ACTION" %SRV_APACHE% "restarted"
 		) || (
-			echo Failed to restart Apache HTTP Server. Try to run as Administrator. && exit /b 1
+			call :msg "FAIL" %SRV_APACHE% "restart"
+			set ERR=1
 		)
 	) || (
-		goto :startApache
+		call :startService %SRV_APACHE%
 	)
 ) else if "%1" == "stop" (
-	sc query MariaDB | findstr RUNNING > nul && (
-		echo Stopping MariaDB server...
-		sc stop MariaDB && (
-			echo MariaDB server has been stopped.
-		) || (
-			echo Failed to stop MariaDB server. Try to run as Administrator. && exit /b 1
-		)
-	) || (
-		echo MariaDB server is already stopped.
-	)
-	sc query Apache2.4 | findstr RUNNING > nul && (
-		echo Stopping Apache HTTP Server...
-		httpd -k stop && (
-			echo Apache HTTP Server has been stopped.
-		) || (
-			echo Failed to stop Apache HTTP Server. Try to run as Administrator. && exit /b 1
-		)
-	) || (
-		echo Apache HTTP Server is already stopped.
-	)
+	call :stopService %SRV_APACHE%
+	call :stopService %SRV_MARIADB%
 ) else (
-	echo Unknown command %1. && exit /b 1
+	echo Unknown command %1.
+	set ERR=1
 )
 
-exit /b
+exit /b %ERR%
 
-:startApache
-echo Starting Apache HTTP Server...
-httpd -k start && (
-	echo Apache HTTP Server has been started
-) || (
-	echo Failed to start Apache HTTP Server && exit /b 1
-)
+@REM %~1 - Service name
+:startService
+	sc query %~1 | findstr RUNNING > nul && (
+		call :msg "ACTION" %~1 "running"
+	) || (
+		call :msg "BEFORE_ACTION" %~1 "Starting"
+		sc start %~1 && (
+			call :msg "AFTER_ACTION" %~1 "started"
+		) || (
+			call :msg "FAIL" %~1 "start"
+			set ERR=1
+		)
+	)
+exit /b 0
+
+@REM %~1 - Service name
+:stopService
+	sc query %~1 | findstr RUNNING > nul && (
+		call :msg "BEFORE_ACTION" %~1 "Stopping"
+		sc stop %~1 && (
+			call :msg "AFTER_ACTION" %~1 "stopped"
+		) || (
+			call :msg "FAIL" %~1 "stop"
+			set ERR=1
+		)
+	) || (
+		call :msg "ACTION" %~1 "stopped"
+	)
+exit /b 0
+
+@REM %~1 - Type of message: FAIL, BEFORE_ACTION, AFTER_ACTION, ACTION
+@REM %~2 - Service name
+@REM %~3 - Form of: start, restart, stop
+:msg
+	if "%~1" == "FAIL" (
+		net session > nul 2>&1 && (
+			set isAdmin=true
+		) || (
+			set isAdmin=false
+		)
+		if "%isAdmin%"=="true" (
+			echo Failed to %~3 %~2 service.
+		) else (
+			echo Failed to %~3 %~2 service. Try to run as Administrator.
+		)
+	) else if "%~1" == "BEFORE_ACTION" (
+		echo %~3 %~2 service...
+	) else if "%~1" == "AFTER_ACTION" (
+		echo %~2 service has been %~3.
+	) else if "%~1" == "ACTION" (
+		echo %~2 service is already %~3.
+	)
+exit /b 0
