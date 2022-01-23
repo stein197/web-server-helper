@@ -17,7 +17,7 @@ if "%command%" == "help" (
 	set isHelp=false
 )
 if "%isHelp%"=="true" (
-	echo Usage: web-server [{start^|restart^|stop^|help}]
+	echo Usage: web-server [{start^|restart^|stop^|help}] [--verbose]
 	echo Starts, stops and restarts Apache HTTP Server and MariaDB server
 	echo Options:
 	echo 	--verbose    Enable verbose output
