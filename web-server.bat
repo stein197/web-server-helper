@@ -1,7 +1,17 @@
 @echo off
-if "%1" == "help" (
+setlocal EnableDelayedExpansion
+
+set command=%1
+set isVerbose=false
+set isHelp=
+set SRV_APACHE=Apache2.4
+set SRV_MARIADB=MariaDB
+set ERR=0
+set OUT=
+
+if "%command%" == "help" (
 	set isHelp=true
-) else if "%1" == "" (
+) else if "%command%" == "" (
 	set isHelp=true
 ) else (
 	set isHelp=false
@@ -9,11 +19,13 @@ if "%1" == "help" (
 if "%isHelp%"=="true" (
 	echo Usage: web-server [{start^|restart^|stop^|help}]
 	echo Starts, stops and restarts Apache HTTP Server and MariaDB server
+	echo Options:
+	echo 	--verbose    Enable verbose output
 	echo Commands:
-	echo 	start      Starts web server
-	echo 	restart    Restarts web server
-	echo 	stop       Stops web server
-	echo 	help       Shows this help
+	echo 	start        Starts web server
+	echo 	restart      Restarts web server
+	echo 	stop         Stops web server
+	echo 	help         Shows this help
 	echo Calling the batch without commands also shows the help
 	exit /b
 )
@@ -22,17 +34,28 @@ where /q httpd || echo Apache HTTP Server is not installed or is not set in the 
 sc query Apache2.4 > nul || echo Installing Apache HTTP Server as a Windows service... && httpd -k install && echo Apache HTTP Server service has been installed successfully.
 sc query MariaDB > nul || echo MariaDB server is not installed as a Windows service. && exit /b 1
 
-set SRV_APACHE=Apache2.4
-set SRV_MARIADB=MariaDB
-set ERR=0
+:shiftParams
+if "%1" neq "" (
+	if "%1" == "--verbose" (
+		set isVerbose=true
+	)
+	shift
+	goto :shiftParams
+)
 
-if "%1" == "start" (
+if "%isVerbose%" == "true" (
+	set OUT="&2"
+) else (
+	set OUT="nul"
+)
+
+if "%command%" == "start" (
 	call :startService %SRV_APACHE%
 	call :startService %SRV_MARIADB%
-) else if "%1" == "restart" (
+) else if "%command%" == "restart" (
 	sc query %SRV_APACHE% | findstr RUNNING > nul && (
 		call :msg "BEFORE_ACTION" %SRV_APACHE% "Restarting"
-		httpd -k restart && (
+		httpd -k restart > %OUT% && (
 			call :msg "AFTER_ACTION" %SRV_APACHE% "restarted"
 		) || (
 			call :msg "FAIL" %SRV_APACHE% "restart"
@@ -41,11 +64,11 @@ if "%1" == "start" (
 	) || (
 		call :startService %SRV_APACHE%
 	)
-) else if "%1" == "stop" (
+) else if "%command%" == "stop" (
 	call :stopService %SRV_APACHE%
 	call :stopService %SRV_MARIADB%
 ) else (
-	echo Unknown command %1.
+	echo Unknown command %command%.
 	set ERR=1
 )
 
@@ -57,7 +80,7 @@ exit /b %ERR%
 		call :msg "ACTION" %~1 "running"
 	) || (
 		call :msg "BEFORE_ACTION" %~1 "Starting"
-		sc start %~1 && (
+		sc start %~1 > %OUT% && (
 			call :msg "AFTER_ACTION" %~1 "started"
 		) || (
 			call :msg "FAIL" %~1 "start"
@@ -70,7 +93,7 @@ exit /b 0
 :stopService
 	sc query %~1 | findstr RUNNING > nul && (
 		call :msg "BEFORE_ACTION" %~1 "Stopping"
-		sc stop %~1 && (
+		sc stop %~1 > %OUT% && (
 			call :msg "AFTER_ACTION" %~1 "stopped"
 		) || (
 			call :msg "FAIL" %~1 "stop"
