@@ -55,7 +55,7 @@ if "%command%" == "start" (
 ) else if "%command%" == "restart" (
 	sc query %SRV_APACHE% | findstr RUNNING > nul && (
 		call :msg "BEFORE_ACTION" %SRV_APACHE% "Restarting"
-		httpd -k restart > %OUT% && (
+		httpd -k restart > %OUT% 2>&1 && (
 			call :msg "AFTER_ACTION" %SRV_APACHE% "restarted"
 		) || (
 			call :msg "FAIL" %SRV_APACHE% "restart"
