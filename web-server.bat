@@ -2,12 +2,12 @@
 setlocal EnableDelayedExpansion
 
 set command=%1
-set isVerbose=false
 set isHelp=
 set SRV_APACHE=Apache2.4
 set SRV_MARIADB=MariaDB
 set ERR=0
 set OUT=
+set OPTS.v=false
 
 if "%command%" == "help" (
 	set isHelp=true
@@ -17,10 +17,10 @@ if "%command%" == "help" (
 	set isHelp=false
 )
 if "%isHelp%"=="true" (
-	echo Usage: web-server [{start^|restart^|stop^|help}] [--verbose]
+	echo Usage: web-server [{start^|restart^|stop^|help}] [/v]
 	echo Starts, stops and restarts Apache HTTP Server and MariaDB server
 	echo Options:
-	echo 	--verbose    Enable verbose output
+	echo 	/v           Enable verbose output
 	echo Commands:
 	echo 	start        Starts web server
 	echo 	restart      Restarts web server
@@ -36,14 +36,14 @@ sc query MariaDB > nul || echo MariaDB server is not installed as a Windows serv
 
 :shiftParams
 if "%1" neq "" (
-	if "%1" == "--verbose" (
-		set isVerbose=true
+	if /i "%1" == "/v" (
+		set OPTS.v=true
 	)
 	shift
 	goto :shiftParams
 )
 
-if "%isVerbose%" == "true" (
+if !OPTS.v! == true (
 	set OUT="&2"
 ) else (
 	set OUT="nul"
