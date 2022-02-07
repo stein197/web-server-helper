@@ -4,7 +4,7 @@ This batch file manages Apache HTTP Server and MariaDB server in a few commands.
 Usage: web-server [{start|restart|stop|help}] [--verbose]
 Starts, stops and restarts Apache HTTP Server and MariaDB server
 Options:
-	--verbose    Enable verbose output
+	/v           Enable verbose output
 Commands:
 	start        Starts web server
 	restart      Restarts web server
